@@ -68,10 +68,10 @@ class wall(ball):
 
 
 # -----------------
-ball1 = ball(50, 50, 20, red, 1, 2, 1)
-ball2 = ball(70, 70, 25, blue, 3, 4, 1)
-ball3 = ball(90, 90, 30, blue, 5, 6, 1)
-ball4 = ball(120, 121, 10, blue, 7, 8, 1)
+ball1 = ball(50, 50, 20, red, 10, 2, 1)
+ball2 = ball(70, 70, 25, blue, 30, 4, 1)
+ball3 = ball(90, 90, 30, blue, 50, 6, 1)
+ball4 = ball(120, 121, 10, blue, 7, 80, 1)
 ball5 = ball(160, 160, 15, blue, 9, 10, 1)
 objects = [ball1, ball2, ball3, ball4, ball5]
 
@@ -85,17 +85,26 @@ for obj in objects:
 pygame.display.update()
 
 cont = True
-dt = 0.001
+dt = 0.01
 while cont:
     for i, obj in enumerate(objects):
-        for new_obj in range(i, len(objects)):
+        for new_obj in objects[i + 1 :]:
             if obj.collision_detection(new_obj):
                 f1x, f1y = obj.force_balls(new_obj)
                 f2x, f2y = -f1x, -f1y
-                ax = Fx / obj.m
-                ay = Fy / obj.m
-                obj.vx += ax * dt
-                obj.vy += ay * dt
+                a1x = f1x / obj.m
+                a1y = f1y / obj.m
+                a2x = f2x / new_obj.m
+                a2y = f2y / new_obj.m
+                obj.vx += a1x * dt
+                obj.vy += a1y * dt
+                obj.x += dt * obj.vx
+                obj.y += dt * obj.vy
+                new_obj.vx += a2x * dt
+                new_obj.vy += a2y * dt
+                new_obj.x += dt * new_obj.vx
+                new_obj.y += dt * new_obj.vy
+            else:
                 obj.x += dt * obj.vx
                 obj.y += dt * obj.vy
         if obj.y <= obj.r:
