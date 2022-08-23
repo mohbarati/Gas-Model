@@ -3,6 +3,7 @@ from random import uniform, choices
 import pygame
 from pygame.locals import *
 
+# initializing the screen
 pygame.init()
 width, height = 600, 600
 sc = pygame.display.set_mode((width, height))
@@ -15,12 +16,14 @@ class ball:
     """Making instances of a ball and its atributes"""
 
     def __distance(self, x, y):
+        """Finds the Euclidean distance"""
         return sqrt(x**2 + y**2)
 
     def draw_ball(self):
         pygame.draw.circle(sc, self.color, (self.x, self.y), self.r)
 
     def collision_detection(self, new):
+        """returns true if the balls overlap"""
         if (
             self.__distance(
                 (self.x) - (new.x),
@@ -32,14 +35,23 @@ class ball:
         return False
 
     def force_balls(self, new):
+        """Force inserted on a ball caused by another ball of the wall
+        modeled by a spring. Returns the force in both components"""
         del_x = self.x - new.x
         del_y = self.y - new.y
         distance = self.__distance(del_x, del_y)
         f = -new.k * (distance - (self.r + new.r))
         return f * del_x / distance, f * del_y / distance
 
+    def update(self):
+        """Upodate the position of the ball"""
+        self.x += dt * self.vx
+        self.y += dt * self.vy
+
 
 class wall(ball):
+    """Wall is modeled as a ball in the mirrored position and with high k value"""
+
     r = 0
     k = 10000
 
@@ -49,70 +61,81 @@ class wall(ball):
 
 
 # -----------------Solid
-r = 33
-m = 1
-k = 1000
-pos = []
-for i in range(r, width, 2 * r):
-    for j in range(r, height, 2 * r):
-        pos.append((i, j))
-number_of_balls = len(pos)
-ball_list = [ball() for _ in range(number_of_balls)]
-for i, item in enumerate(ball_list):
-    item.x, item.y = pos[i]
-    item.k = k
-    item.r = r
-    item.m = m
-    item.vx = uniform(-50, 50)
-    item.vy = uniform(-50, 50)
-    item.color = choices(color_range, k=3)
+def solid(r=33, m=1, k=1000):
+    """Aranged in such a way to almost fill the screen with some vibration"""
+    pos = []
+    for i in range(r, width, 2 * r):
+        for j in range(r, height, 2 * r):
+            pos.append((i, j))
+    number_of_balls = len(pos)
+    ball_list = [ball() for _ in range(number_of_balls)]
+    for i, item in enumerate(ball_list):
+        item.x, item.y = pos[i]
+        item.k = k
+        item.r = r
+        item.m = m
+        item.vx = uniform(-50, 50)
+        item.vy = uniform(-50, 50)
+        item.color = choices(color_range, k=3)
+    return ball_list
+
+
 # ------------------- liquid
-# r = 25
-# m = 1
-# k = 10
-# number_of_balls = 200
-# ball_list = [ball() for _ in range(number_of_balls)]
-# for item in ball_list:
-#     item.k = k
-#     item.r = r
-#     item.m = m
-#     item.x = uniform(0 + r, width - r)
-#     item.y = uniform(0 + r, height - r)
-#     item.vx = 0
-#     item.vy = 0
-#     item.color = choices(color_range, k=3)
+def liquid(number_of_balls=200, r=25, m=1, k=10):
+    """Balls take more area than the screen, hence overlap causes them to
+    exibit liquid behaviour (sliding)"""
+    ball_list = [ball() for _ in range(number_of_balls)]
+    for item in ball_list:
+        item.k = k
+        item.r = r
+        item.m = m
+        item.x = uniform(0 + r, width - r)
+        item.y = uniform(0 + r, height - r)
+        item.vx = 0
+        item.vy = 0
+        item.color = choices(color_range, k=3)
+    return ball_list
+
+
 # ------------------------gas
-# r = 20
-# m = 1
-# k = 100
-# number_of_balls = 100
-# ball_list = [ball() for _ in range(number_of_balls)]
-# for item in ball_list:
-#     item.k = k
-#     item.r = r
-#     item.m = m
-#     item.x = uniform(0 + r, width - r)
-#     item.y = uniform(0 + r, height - r)
-#     item.vx = uniform(-3, 3)
-#     item.vy = uniform(-3, 3)
-#     item.color = choices(color_range, k=3)
+def gas(r=20, m=1, k=100, number_of_balls=100):
+    """gas modeled with elastic collisions. No atraction force between the atoms"""
+    ball_list = [ball() for _ in range(number_of_balls)]
+    for item in ball_list:
+        item.k = k
+        item.r = r
+        item.m = m
+        item.x = uniform(0 + r, width - r)
+        item.y = uniform(0 + r, height - r)
+        item.vx = uniform(-3, 3)
+        item.vy = uniform(-3, 3)
+        item.color = choices(color_range, k=3)
+    return ball_list
+
+
 # ------------------------------
 
-# walls
+# initializing the walls
 wall_top = wall(None, 0)
 wall_down = wall(None, height)
 wall_left = wall(0, None)
 wall_right = wall(width, None)
 
+# defining the state
+ball_list = gas()  # solid() or liquid() or gas()
+
+# drawing the particles
 for obj in ball_list:
     obj.draw_ball()
 pygame.display.update()
+
+# Starting the loop
 dt = 0.01
 cont = True
 
 while cont:
     for i, obj in enumerate(ball_list):
-        for new_obj in ball_list[i + 1 :]:
+        for new_obj in ball_list[i + 1 :]:  # collision of balls with each other
             if obj.collision_detection(new_obj):
                 f1x, f1y = obj.force_balls(new_obj)
                 f2x, f2y = -f1x, -f1y
@@ -124,6 +147,8 @@ while cont:
                 obj.vy += a1y * dt
                 new_obj.vx += a2x * dt
                 new_obj.vy += a2y * dt
+
+        # wall collisions
         if obj.y <= obj.r:
             wall_top.x = obj.x
             Fx, Fy = obj.force_balls(wall_top)
@@ -152,9 +177,10 @@ while cont:
             ay = Fy / obj.m
             obj.vx += ax * dt
             obj.vy += ay * dt
-        obj.x += dt * obj.vx
-        obj.y += dt * obj.vy
-    sc.fill(white)
+
+        obj.update()  # update position of the balls
+    sc.fill(white)  # clear the screen
+    # re-draw the particles
     for obj in ball_list:
         obj.draw_ball()
     pygame.display.update()
